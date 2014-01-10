@@ -31,12 +31,12 @@ find | cpio -H newc -o --quiet --file=$WORKDIR/temp/boot-initramfs.cpio
 cd $WORKDIR/temp/recovery-initramfs/
 find | cpio -H newc -o --quiet --file=$WORKDIR/temp/recovery-initramfs.cpio
 cd $WORKDIR/temp/
-gzip -9 boot-initramfs.cpio
-gzip -9 recovery-initramfs.cpio
+lzma -z9ev boot-initramfs.cpio
+lzma -z9ev recovery-initramfs.cpio
 
 echo 'Making images...'
-abootimg --create $WORKDIR/output/boot.img -f $CONFIG -k $WORKDIR/temp/zImage -r $WORKDIR/temp/boot-initramfs.cpio.gz
-abootimg --create $WORKDIR/output/recovery.img -f $CONFIG -k $WORKDIR/temp/zImage -r $WORKDIR/temp/recovery-initramfs.cpio.gz
+abootimg --create $WORKDIR/output/boot.img -f $CONFIG -k $WORKDIR/temp/zImage -r $WORKDIR/temp/boot-initramfs.cpio.lzma
+abootimg --create $WORKDIR/output/recovery.img -f $CONFIG -k $WORKDIR/temp/zImage -r $WORKDIR/temp/recovery-initramfs.cpio.lzma
 
 echo 'Making Odin flashable tarballs...'
 cd $WORKDIR/output/
