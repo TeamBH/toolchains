@@ -248,9 +248,11 @@ double	lgamma(double) __NDK_FPABI_MATH__;
 long long llrint(double) __NDK_FPABI_MATH__;
 long long llround(double) __NDK_FPABI_MATH__;
 double	log1p(double) __NDK_FPABI_MATH__;
+double	log2(double) __NDK_FPABI_MATH__;
 double	logb(double) __NDK_FPABI_MATH__;
 long	lrint(double) __NDK_FPABI_MATH__;
 long	lround(double) __NDK_FPABI_MATH__;
+double	nan(const char *) __NDK_FPABI_MATH__ __pure2;
 double	nextafter(double, double) __NDK_FPABI_MATH__;
 double	remainder(double, double) __NDK_FPABI_MATH__;
 double	remquo(double, double, int *) __NDK_FPABI_MATH__;
@@ -327,6 +329,7 @@ int	ilogbf(float) __NDK_FPABI_MATH__ __pure2;
 float	ldexpf(float, int) __NDK_FPABI_MATH__;
 float	log10f(float) __NDK_FPABI_MATH__;
 float	log1pf(float) __NDK_FPABI_MATH__;
+float	log2f(float) __NDK_FPABI_MATH__;
 float	logf(float) __NDK_FPABI_MATH__;
 float	modff(float, float *) __NDK_FPABI_MATH__;	/* fundamentally !__pure2 */
 
@@ -343,6 +346,7 @@ float	erff(float) __NDK_FPABI_MATH__;
 float	erfcf(float) __NDK_FPABI_MATH__;
 float	hypotf(float, float) __NDK_FPABI_MATH__;
 float	lgammaf(float) __NDK_FPABI_MATH__;
+float	tgammaf(float) __NDK_FPABI_MATH__;
 
 float	acoshf(float) __NDK_FPABI_MATH__;
 float	asinhf(float) __NDK_FPABI_MATH__;
@@ -354,6 +358,7 @@ long long llrintf(float) __NDK_FPABI_MATH__;
 long long llroundf(float) __NDK_FPABI_MATH__;
 long	lrintf(float) __NDK_FPABI_MATH__;
 long	lroundf(float) __NDK_FPABI_MATH__;
+float	nanf(const char *) __NDK_FPABI_MATH__ __pure2;
 float	nearbyintf(float) __NDK_FPABI_MATH__;
 float	nextafterf(float, float) __NDK_FPABI_MATH__;
 float	remainderf(float, float) __NDK_FPABI_MATH__;
@@ -447,14 +452,17 @@ long long	llroundl(long double) __NDK_FPABI_MATH__;
 long double	log10l(long double) __NDK_FPABI_MATH__;
 long double	log1pl(long double) __NDK_FPABI_MATH__;
 long double	log2l(long double) __NDK_FPABI_MATH__;
+#endif
 long double	logbl(long double) __NDK_FPABI_MATH__;
-long double	logl(long double) __NDK_FPABI_MATH__;
+#if 0
 long		lrintl(long double) __NDK_FPABI_MATH__;
 #endif
 long		lroundl(long double) __NDK_FPABI_MATH__;
 #if 0
 long double	modfl(long double, long double *) __NDK_FPABI_MATH__; /* fundamentally !__pure2 */
+#endif
 long double	nanl(const char *) __NDK_FPABI_MATH__ __pure2;
+#if 0
 long double	nearbyintl(long double) __NDK_FPABI_MATH__;
 #endif
 long double	nextafterl(long double, long double) __NDK_FPABI_MATH__;
@@ -486,6 +494,8 @@ void  sincos(double x, double *sin, double *cos) __NDK_FPABI_MATH__;
 void  sincosf(float x, float *sin, float *cos) __NDK_FPABI_MATH__;
 void  sincosl(long double x, long double *sin, long double *cos) __NDK_FPABI_MATH__;
 #endif
+
+long double	log2l(long double) __NDK_FPABI_MATH__;
 
 /* builtin version of all the above math functions are annotated too */
 
@@ -523,18 +533,20 @@ double	__builtin_fma(double, double, double) __NDK_FPABI_MATH__;
 double	__builtin_hypot(double, double) __NDK_FPABI_MATH__;
 int	__builtin_ilogb(double) __NDK_FPABI_MATH__ __pure2;
 /* int	__builtin_isinf(double) __NDK_FPABI_MATH__ __pure2; */
-#if !defined(__clang__) || __clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 4)
+#if !defined(__clang__) || __clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 5)
 int	__builtin_isnan(double) __NDK_FPABI_MATH__ __pure2;
 #else
-/* clang < 3.4 has faulty prototype for __builtin_isnan */
+/* clang < 3.5 has faulty prototype for __builtin_isnan */
 #endif
 double	__builtin_lgamma(double) __NDK_FPABI_MATH__;
 long long __builtin_llrint(double) __NDK_FPABI_MATH__;
 long long __builtin_llround(double) __NDK_FPABI_MATH__;
 double	__builtin_log1p(double) __NDK_FPABI_MATH__;
+double	__builtin_log2(double) __NDK_FPABI_MATH__;
 double	__builtin_logb(double) __NDK_FPABI_MATH__;
 long	__builtin_lrint(double) __NDK_FPABI_MATH__;
 long	__builtin_lround(double) __NDK_FPABI_MATH__;
+double	__builtin_nan(const char *) __NDK_FPABI_MATH__ __pure2;
 double	__builtin_nextafter(double, double) __NDK_FPABI_MATH__;
 double	__builtin_remainder(double, double) __NDK_FPABI_MATH__;
 double	__builtin_remquo(double, double, int *) __NDK_FPABI_MATH__;
@@ -581,6 +593,7 @@ int	__builtin_ilogbf(float) __NDK_FPABI_MATH__ __pure2;
 float	__builtin_ldexpf(float, int) __NDK_FPABI_MATH__;
 float	__builtin_log10f(float) __NDK_FPABI_MATH__;
 float	__builtin_log1pf(float) __NDK_FPABI_MATH__;
+float	__builtin_log2f(float) __NDK_FPABI_MATH__;
 float	__builtin_logf(float) __NDK_FPABI_MATH__;
 float	__builtin_modff(float, float *) __NDK_FPABI_MATH__;	/* fundamentally !__pure2 */
 float	__builtin_powf(float, float) __NDK_FPABI_MATH__;
@@ -594,6 +607,7 @@ float	__builtin_erff(float) __NDK_FPABI_MATH__;
 float	__builtin_erfcf(float) __NDK_FPABI_MATH__;
 float	__builtin_hypotf(float, float) __NDK_FPABI_MATH__;
 float	__builtin_lgammaf(float) __NDK_FPABI_MATH__;
+float	__builtin_tgammaf(float) __NDK_FPABI_MATH__;
 float	__builtin_acoshf(float) __NDK_FPABI_MATH__;
 float	__builtin_asinhf(float) __NDK_FPABI_MATH__;
 float	__builtin_atanhf(float) __NDK_FPABI_MATH__;
@@ -604,6 +618,7 @@ long long __builtin_llrintf(float) __NDK_FPABI_MATH__;
 long long __builtin_llroundf(float) __NDK_FPABI_MATH__;
 long	__builtin_lrintf(float) __NDK_FPABI_MATH__;
 long	__builtin_lroundf(float) __NDK_FPABI_MATH__;
+float	__builtin_nanf(const char *) __NDK_FPABI_MATH__ __pure2;
 float	__builtin_nearbyintf(float) __NDK_FPABI_MATH__;
 float	__builtin_nextafterf(float, float) __NDK_FPABI_MATH__;
 float	__builtin_remainderf(float, float) __NDK_FPABI_MATH__;
@@ -694,7 +709,12 @@ long double	__builtin_tanhl(long double) __NDK_FPABI_MATH__;
 long double	__builtin_tanl(long double) __NDK_FPABI_MATH__;
 long double	__builtin_tgammal(long double) __NDK_FPABI_MATH__;
 long double	__builtin_truncl(long double) __NDK_FPABI_MATH__;
+void  __builtin_sincos(double x, double *sin, double *cos) __NDK_FPABI_MATH__;
+void  __builtin_sincosf(float x, float *sin, float *cos) __NDK_FPABI_MATH__;
+void  __builtin_sincosl(long double x, long double *sin, long double *cos) __NDK_FPABI_MATH__;
+long double	__builtin_log2l(long double) __NDK_FPABI_MATH__;
 
+/* #endif */ /* __ISO_C_VISIBLE >= 1999 */
 __END_DECLS
 
 #endif /* !_MATH_H_ */

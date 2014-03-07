@@ -6,12 +6,15 @@ toolchain/cloog.git                    98972d5434ffcb4d11d2c81a46600e9a1cda9110 
 toolchain/isl.git                      b05d4572958c5d497da793f3317084bab90c3033 add isl-0.11.1.tar.bz2 needed by GCC 4.8 with graphite
 toolchain/ppl.git                      8ba1875b4c5341d902321761022a6d2a0b5b19a4 add ppl-1.0.tar.bz2
 toolchain/expat.git                    40172a0ae9d40a068f1e1a48ffcf6a1ccf765ed5 expat package for building gdb-7.3
-toolchain/binutils.git                 9ddab0875454b0b5a8329a63c01b71880170575e [2.23] Use relative relocation for R_X86_64_32 on x32
-toolchain/gcc.git                      325a57a9cceb570741de8b68c40f4a72136cc35d Merge "[4.8] Backport revision 204203 to fix 3.4 kernel compilation."
-toolchain/gdb.git                      2f1caff8ab3e6f7d34c8e58bd199ef518cfd2202 [7.3.x] Add one clue to find prebuilt python for Android platform debugging
+toolchain/binutils.git                 c2fdb07e6f6933f689e92d024293b649667dd493 [2.21], [2.22], [2.23] Backport of several patches for fixing        build of binutils with texinfo-5.0.
+toolchain/gcc.git                      5be615df32ce970fcccda93cf577e9ce35b1d397 [4.6, 4.8] Add additional multilib option: mfloat-abi=hard
+toolchain/gdb.git                      899a2eec7872cfdcf06e84c49b307c46df64ef69 [7.3.x] Fix build with texinfo-5.0
 toolchain/python.git                   30bef47fac04bd5e99da7d09c8ed4260e1fbf09c Python 2.7.5: Regen configure and pyconfig.h.in
 toolchain/perl.git                     1121daca35c6c692602621eab28d4de19f0b347d Add -Dcc_as_ld to configure
-toolchain/mclinker.git                 7eaf69bfeba8d6530f7325a8982634a0f2616528 Merge branch 'master' of persistent-https://android.googlesource.com/toolchain/mclinker into aosp
-toolchain/clang.git (release_33)       dc17763dfc527ec82f088e6f1bdce2b2bb2ce5ec Fix to compile ARM atomic __*atomic_fetch_add/sub/or/...
-toolchain/llvm.git (release_33)        3f04dbc71cb4b8646773e9ade4f04cbb91b856bd Remove unnecessary (and mismatched) mkdtemp declaration.
+toolchain/mclinker.git                 5e396d9ab10326d57bd50f1331f94a9fa5415d9c Merge "Filter out -ltinfo for device configuration due to lack of the library."
+toolchain/clang.git (release_34)       ecf018d4aa0d9909bf3f09b82e46fde6ebbd55d2 Merge "[3.4] Revert clang svn@191249 about producing errors for unknown options" into release_34
+toolchain/llvm.git (release_34)        b9557728a44bcc194fcb15cd64005bfed139fddb [ndk] Code cleanup of function-based parallel patch.
+toolchain/compiler-rt.git (release_34) b065fccd8ab47b4de4610093fb98514fc5df2362 Alias __aeabi_fcmpun to __unordsf2.
+toolchain/clang.git (release_33)       deedd8557b7d82c6931b6942bd39a00127780835 Add additional multilib option: mfloat-abi=hard
+toolchain/llvm.git (release_33)        55eb0302f698d7733f83d8ff10c09397bb6b8159 Recognize -Ox options and set optimizatoin-level in bitcode wrapper header.
 toolchain/compiler-rt.git (release_33) c880feaaa8829681a025d29a33704c18e21e87e1 Misc fixes for compiler_rt

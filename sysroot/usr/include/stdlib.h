@@ -55,6 +55,7 @@ extern char *getenv(const char *);
 extern int putenv(const char *);
 extern int setenv(const char *, const char *, int);
 extern int unsetenv(const char *);
+extern int clearenv(void);
 
 extern char *mkdtemp(char *);
 extern char *mktemp (char *);
@@ -135,10 +136,10 @@ static __inline__ void srandom(unsigned int __s)
 
 extern int    unlockpt(int);
 extern char*  ptsname(int);
-extern char*  ptsname_r(int, char*, size_t);
+extern int    ptsname_r(int, char*, size_t);
 extern int    getpt(void);
 
-static __inline__ int grantpt(int __fd)
+static __inline__ int grantpt(int __fd __attribute((unused)))
 {
   (void)__fd;
   return 0;     /* devpts does this all for us! */
@@ -180,7 +181,6 @@ extern size_t	wcstombs(char *, const wchar_t *, size_t);
 
 #if 0 /* MISSING FROM BIONIC */
 extern int on_exit(void (*)(int, void *), void *);
-extern int clearenv(void);
 #endif /* MISSING */
 
 __END_DECLS
