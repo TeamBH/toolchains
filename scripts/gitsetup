@@ -1,9 +1,10 @@
 #!/bin/bash
 
-wget http://curl.haxx.se/ca/cacert.pem -O /etc/ssl/cert.pem
+git config --global core.editor "nano"
+git config --global push.default simple
 git config --global user.name "Max Fu"
 git config --global user.email "fxy83613@gmail.com"
-git config --global push.default simple
+wget http://curl.haxx.se/ca/cacert.pem -O /etc/ssl/cert.pem
 git config --global http.sslCAinfo "/etc/ssl/cert.pem"
 ssh-keygen -t rsa -C "fxy83613@gmail.com"
 echo put the content of ~/.ssh/id_rsa.pub on github
