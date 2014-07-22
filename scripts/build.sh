@@ -17,6 +17,7 @@ echo 'Setting Model...'
 INDEX=1
 HEAD=''
 for i in `ls $INITRDDIR`; do
+  if [ -f $SOURCEDIR'/arch/arm/configs/'$i'_00_defconfig' ]; then
   if `echo $i | grep -q ja3g`; then
     HEAD=$HEAD''$INDEX
     echo $INDEX' - '`echo $i | sed -e s/ja3g_open/'Galaxy S4 International: GT-I9500'/g \
@@ -24,6 +25,7 @@ for i in `ls $INITRDDIR`; do
                                    -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: GT-I9502'/g`
     eval MODEL$INDEX=$i
     INDEX=`expr $INDEX + 1`
+  fi
   fi
 done
 read -p 'Please Choose a Model, ('$HEAD')>' NUM
@@ -98,17 +100,19 @@ rm -rf $WORKDIR
 mkdir $WORKDIR
 cd $WORKDIR
 cp -a $BOOTIMG $WORKDIR/boot.stock.img
-abootimg -x boot.stock.img
+$TCHAINDIR/$SUBARCH/abootimg/abootimg -x boot.stock.img
+sed -i '/bootsize/d' $WORKDIR/bootimg.cfg
 mv zImage zImage.stock
 mv initrd.img initrd.stock.img
-mkdir $WORKDIR/boot-initramfs
-zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-initramfs; cpio -i )
-cp -a $INITRDDIR/addon/* $WORKDIR/boot-initramfs
-cat $WORKDIR/boot-initramfs/res/init_patch >> $WORKDIR/boot-initramfs/init.rc
+mkdir $WORKDIR/boot-ramdisk
+zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk; cpio -i )
+# cp -a $INITRDDIR/addon/* $WORKDIR/boot-ramdisk
+# cat $WORKDIR/boot-ramdisk/res/init_patch >> $WORKDIR/boot-ramdisk/init.rc
+find $WORKDIR/boot-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
 cp -a $RECOVERYCPIO $WORKDIR/
-mkdir $WORKDIR/recovery-initramfs
-zcat $WORKDIR/recovery.cpio.lzma | ( cd $WORKDIR/recovery-initramfs; cpio -i )
-sed -i '/bootsize/d' $WORKDIR/bootimg.cfg
+mkdir $WORKDIR/recovery-ramdisk
+zcat $WORKDIR/recovery.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk; cpio -i )
+find $WORKDIR/recovery-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
 
 echo 'Making kernel and modules...'
 cd $SOURCEDIR
@@ -117,31 +121,28 @@ git commit --all --message="Change Until `date`" > /dev/null
 if [ $? == 0 ]; then
   PATCH=`git format-patch HEAD~1 -o $WORKDIR`
 fi
-# cat $SOURCEDIR/arch/arm/configs/ja3g_00_defconfig \
-#     $SOURCEDIR/arch/arm/configs/ja3gduos_chn_cu \
-#     $SOURCEDIR/arch/arm/configs/ja3g_maxfu \
-#     $SOURCEDIR/arch/arm/configs/ja3g_sdk19 > $SOURCEDIR/arch/arm/configs/temp_defconfig
-# make temp_defconfig
-make ja3gduos_chn_cu_defconfig
-make -j3
+cat $SOURCEDIR'/arch/arm/configs/'$MODEL'_00_defconfig' \
+    $SOURCEDIR'/arch/arm/configs/ja3g_maxfu' > $SOURCEDIR'/arch/arm/configs/temp_defconfig'
+make temp_defconfig
+make -j2
 find -name zImage -exec cp -av {} $WORKDIR/ \;
-find -name *.ko -exec cp -av {} $WORKDIR/boot-initramfs/lib/modules/ \;
-find -name *.ko -exec cp -av {} $WORKDIR/recovery-initramfs/lib/modules/ \;
+find -name *.ko -exec cp -av {} $WORKDIR/boot-ramdisk/lib/modules/ \;
+find -name *.ko -exec cp -av {} $WORKDIR/recovery-ramdisk/lib/modules/ \;
 
 echo 'Making ramdisks...'
-chmod -R g-w $WORKDIR/boot-initramfs/*
-chmod -R g-w $WORKDIR/recovery-initramfs/*
-( cd $WORKDIR/boot-initramfs; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/boot-initramfs.cpio.lzma
-( cd $WORKDIR/recovery-initramfs; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/recovery-initramfs.cpio.lzma
+chmod -R g-w $WORKDIR/boot-ramdisk/*
+( cd $WORKDIR/boot-ramdisk; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/boot-ramdisk.cpio.lzma
+chmod -R g-w $WORKDIR/recovery-ramdisk/*
+( cd $WORKDIR/recovery-ramdisk; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/recovery-ramdisk.cpio.lzma
 
 echo 'Making images...'
-abootimg --create $WORKDIR/boot.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/boot-initramfs.cpio.lzma
-abootimg --create $WORKDIR/recovery.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-initramfs.cpio.lzma
+$TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/boot.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/boot-ramdisk.cpio.lzma
+$TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/recovery.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-ramdisk.cpio.lzma
 
 echo 'Making Odin flashable tarballs...'
 cd $WORKDIR/
-tar -cvf boot-$LOCALVERSION.tar boot.img
-tar -cvf recovery-$LOCALVERSION.tar recovery.img
+tar -cvf boot$LOCALVERSION.tar boot.img
+tar -cvf recovery$LOCALVERSION.tar recovery.img
 
 # echo 'Making CWM/TWRP flashable zips...'
 # cp -a $WORKDIR/output/*.img $WORKDIR/temp/recovery-flashable/
