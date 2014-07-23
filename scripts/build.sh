@@ -17,15 +17,16 @@ echo 'Setting Model...'
 INDEX=1
 HEAD=''
 for i in `ls $INITRDDIR`; do
-  if [ -f $SOURCEDIR'/arch/arm/configs/'$i'_00_defconfig' ]; then
-  if `echo $i | grep -q ja3g`; then
-    HEAD=$HEAD''$INDEX
-    echo $INDEX' - '`echo $i | sed -e s/ja3g_open/'Galaxy S4 International: GT-I9500'/g \
-                                   -e s/ja3gduos_chn_ctc/'Galaxy S4 Duos CDMA2000: SCH-I959'/g \
-                                   -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: GT-I9502'/g`
-    eval MODEL$INDEX=$i
-    INDEX=`expr $INDEX + 1`
-  fi
+BASECONFIG=$i'_00_defconfig'
+  if [ -f $SOURCEDIR/arch/arm/configs/$BASECONFIG ]; then
+    if `echo $i | grep -q ja3g`; then
+      HEAD=$HEAD''$INDEX
+      echo $INDEX' - '`echo $i | sed -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: GT-I9502'/g \
+                                     -e s/ja3gduos_chn_ctc/'Galaxy S4 Duos CDMA2000: SCH-I959'/g \
+                                     -e s/ja3g/'Galaxy S4 International: GT-I9500'/g`
+      eval MODEL$INDEX=$i
+      INDEX=`expr $INDEX + 1`
+    fi
   fi
 done
 read -p 'Please Choose a Model, ('$HEAD')>' NUM
@@ -35,6 +36,8 @@ if [ -z $NUM ]; then
 fi
 CHOICE=MODEL$NUM
 eval export MODEL=\$$CHOICE
+BASECONFIG=$MODEL'_00_defconfig'
+MODCONFIG=ja3g_maxfu
 
 echo 'Setting SDK...'
 INDEX=1
@@ -60,10 +63,8 @@ export BOOTIMG=$INITRDDIR/$MODEL/boot.$SDK.img
 export RECOVERYCPIO=$INITRDDIR/$MODEL/recovery.cpio.lzma
 
 echo 'Setting Toolchain...'
-SUBARCH=`uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
-				  -e s/arm.*/arm/ -e s/sa110/arm/ \
-				  -e s/s390x/s390/ -e s/parisc64/parisc/ \
-				  -e s/ppc.*/powerpc/ -e s/mips.*/mips/ \
+SUBARCH=`uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ -e s/arm.*/arm/ -e s/sa110/arm/ \
+				  -e s/s390x/s390/ -e s/parisc64/parisc/ -e s/ppc.*/powerpc/ -e s/mips.*/mips/ \
 				  -e s/sh[234].*/sh/`
 INDEX=1
 HEAD=''
@@ -92,8 +93,9 @@ if [ ! -z $NEWVER ]; then
   sed -i "s/VERSION=$VERSION/VERSION=$NEWVER/g" $0
   VERSION=$NEWVER
 fi
-LOCALVERSION=`echo -$MODEL-$VERSION | sed -e s/ja3g_open/i9500/g -e s/ja3gduos_chn_ctc/i959/g -e s/ja3gduos_chn_cu/i9502/g`
-echo $LOCALVERSION
+export LOCALVERSION=`echo -$MODEL-$VERSION | sed -e s/ja3gduos_chn_ctc/i959/g -e s/ja3gduos_chn_cu/i9502/g -e s/ja3g_open/i9500/g`
+BOOTPACK='boot'$LOCALVERSION
+RECOVERYPACK='recovery'$LOCALVERSION
 
 echo 'Setting workspace...'
 rm -rf $WORKDIR
@@ -114,6 +116,17 @@ mkdir $WORKDIR/recovery-ramdisk
 zcat $WORKDIR/recovery.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk; cpio -i )
 find $WORKDIR/recovery-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
 
+clear
+echo 'About to compile the kernel...'
+echo 'Model: '`echo $MODEL | sed -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: GT-I9502'/g \
+                                     -e s/ja3gduos_chn_ctc/'Galaxy S4 Duos CDMA2000: SCH-I959'/g \
+                                     -e s/ja3g/'Galaxy S4 International: GT-I9500'/g`'.'
+echo 'Version: 3.4.5-MaxFour'$LOCALVERSION
+echo 'Android SDK: '`echo $SDK | sed -e 's/sdk18/TouchWiz 4.3/g' -e 's/sdk19/TouchWiz 4.4.2/g' \
+                                     -e 's/aosp18/AndroidOpensource 4.3/g' -e 's/aosp19/AndroidOpensource 4.4.2/g'`
+echo 'Files: '$WORKDIR'/*.tar, *.zip, *.patch, critial.output.txt'
+read -p 'Input anything with ENTER to continue.>' INPUT
+
 echo 'Making kernel and modules...'
 cd $SOURCEDIR
 git add --all > /dev/null
@@ -121,10 +134,10 @@ git commit --all --message="Change Until `date`" > /dev/null
 if [ $? == 0 ]; then
   PATCH=`git format-patch HEAD~1 -o $WORKDIR`
 fi
-cat $SOURCEDIR'/arch/arm/configs/'$MODEL'_00_defconfig' \
-    $SOURCEDIR'/arch/arm/configs/ja3g_maxfu' > $SOURCEDIR'/arch/arm/configs/temp_defconfig'
+cat $SOURCEDIR/arch/arm/configs/$BASECONFIG \
+    $SOURCEDIR/arch/arm/configs/$MODCONFIG > $SOURCEDIR/arch/arm/configs/temp_defconfig
 make temp_defconfig
-make -j2
+make -j2 2>$WORKDIR/critial.output.txt
 find -name zImage -exec cp -av {} $WORKDIR/ \;
 find -name *.ko -exec cp -av {} $WORKDIR/boot-ramdisk/lib/modules/ \;
 find -name *.ko -exec cp -av {} $WORKDIR/recovery-ramdisk/lib/modules/ \;
@@ -141,8 +154,8 @@ $TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/recovery.img -f $WORKDIR
 
 echo 'Making Odin flashable tarballs...'
 cd $WORKDIR/
-tar -cvf boot$LOCALVERSION.tar boot.img
-tar -cvf recovery$LOCALVERSION.tar recovery.img
+tar -cvf $BOOTPACK.tar boot.img
+tar -cvf $RECOVERYPACK.tar recovery.img
 
 # echo 'Making CWM/TWRP flashable zips...'
 # cp -a $WORKDIR/output/*.img $WORKDIR/temp/recovery-flashable/
