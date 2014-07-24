@@ -23,7 +23,7 @@ BASECONFIG=$i'_00_defconfig'
       HEAD=$HEAD''$INDEX
       echo $INDEX' - '`echo $i | sed -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: GT-I9502'/g \
                                      -e s/ja3gduos_chn_ctc/'Galaxy S4 Duos CDMA2000: SCH-I959'/g \
-                                     -e s/ja3g/'Galaxy S4 International: GT-I9500'/g`
+                                     -e s/ja3g_chn_open/'Galaxy S4 International: GT-I9500'/g`
       eval MODEL$INDEX=$i
       INDEX=`expr $INDEX + 1`
     fi
@@ -93,7 +93,7 @@ if [ ! -z $NEWVER ]; then
   sed -i "s/VERSION=$VERSION/VERSION=$NEWVER/g" $0
   VERSION=$NEWVER
 fi
-export LOCALVERSION=`echo -$MODEL-$VERSION | sed -e s/ja3gduos_chn_ctc/i959/g -e s/ja3gduos_chn_cu/i9502/g -e s/ja3g_open/i9500/g`
+export LOCALVERSION=`echo -$MODEL-$VERSION | sed -e s/ja3gduos_chn_ctc/i959/g -e s/ja3gduos_chn_cu/i9502/g -e s/ja3g_chn_open/i9500/g`
 BOOTPACK='boot'$LOCALVERSION
 RECOVERYPACK='recovery'$LOCALVERSION
 
@@ -120,7 +120,7 @@ clear
 echo 'About to compile the kernel...'
 echo 'Model: '`echo $MODEL | sed -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: GT-I9502'/g \
                                      -e s/ja3gduos_chn_ctc/'Galaxy S4 Duos CDMA2000: SCH-I959'/g \
-                                     -e s/ja3g/'Galaxy S4 International: GT-I9500'/g`'.'
+                                     -e s/ja3g_chn_open/'Galaxy S4 International: GT-I9500'/g`'.'
 echo 'Version: 3.4.5-MaxFour'$LOCALVERSION
 echo 'Android SDK: '`echo $SDK | sed -e 's/sdk18/TouchWiz 4.3/g' -e 's/sdk19/TouchWiz 4.4.2/g' \
                                      -e 's/aosp18/AndroidOpensource 4.3/g' -e 's/aosp19/AndroidOpensource 4.4.2/g'`
