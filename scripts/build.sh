@@ -83,7 +83,8 @@ if [ -z $NUM ]; then
 fi
 CHOICE=TCHAIN$NUM
 eval export CROSS_COMPILE=\$$CHOICE
-export SYSROOT=$TCHAINDIR/$SUBARCH/sysroot/
+API=`echo $SDK | sed 's/aosp/sdk/g'`
+export SYSROOT=$TCHAINDIR/$SUBARCH/sysroot/$API/
 
 echo 'Setting version'
 VERSION=v15
@@ -107,15 +108,22 @@ sed -i '/bootsize/d' $WORKDIR/bootimg.cfg
 mv zImage zImage.stock
 mv initrd.img initrd.stock.img
 mkdir $WORKDIR/boot-ramdisk
-zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk; cpio -i )
+$TCHAINDIR/$SUBARCH/busybox/busybox zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk; cpio -i )
 # cp -a $INITRDDIR/addon/* $WORKDIR/boot-ramdisk
 # cat $WORKDIR/boot-ramdisk/res/init_patch >> $WORKDIR/boot-ramdisk/init.rc
-find $WORKDIR/boot-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
+if [ -d $WORKDIR/boot-ramdisk/lib/modules/ ]; then
+  find $WORKDIR/boot-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
+else
+  mkdir -p $WORKDIR/boot-ramdisk/lib/modules/
+fi
 cp -a $RECOVERYCPIO $WORKDIR/
 mkdir $WORKDIR/recovery-ramdisk
-zcat $WORKDIR/recovery.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk; cpio -i )
-find $WORKDIR/recovery-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
-
+$TCHAINDIR/$SUBARCH/busybox/busybox lzcat $WORKDIR/recovery.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk; cpio -i )
+if [ -d $WORKDIR/recovery-ramdisk/lib/modules/ ]; then
+  find $WORKDIR/recovery-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
+else
+  mkdir -p $WORKDIR/recovery-ramdisk/lib/modules/
+fi
 clear
 echo 'About to compile the kernel...'
 echo 'Model: '`echo $MODEL | sed -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: GT-I9502'/g \
@@ -124,7 +132,8 @@ echo 'Model: '`echo $MODEL | sed -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: 
 echo 'Version: 3.4.5-MaxFour'$LOCALVERSION
 echo 'Android SDK: '`echo $SDK | sed -e 's/sdk18/TouchWiz 4.3/g' -e 's/sdk19/TouchWiz 4.4.2/g' \
                                      -e 's/aosp18/AndroidOpensource 4.3/g' -e 's/aosp19/AndroidOpensource 4.4.2/g'`
-echo 'Files: '$WORKDIR'/*.tar, *.zip, *.patch, critial.output.txt'
+echo 'SYSROOT: '$SYSROOT
+echo 'Files: '$WORKDIR'/*.tar, *.zip, *.patch, normal.output.txt, critial.output.txt'
 read -p 'Input anything with ENTER to continue.>' INPUT
 
 echo 'Making kernel and modules...'
@@ -137,7 +146,7 @@ fi
 cat $SOURCEDIR/arch/arm/configs/$BASECONFIG \
     $SOURCEDIR/arch/arm/configs/$MODCONFIG > $SOURCEDIR/arch/arm/configs/temp_defconfig
 make temp_defconfig
-make -j2 2>$WORKDIR/critial.output.txt
+make -j2 1>$WORKDIR/normal.output.txt 2>$WORKDIR/critial.output.txt
 find -name zImage -exec cp -av {} $WORKDIR/ \;
 find -name *.ko -exec cp -av {} $WORKDIR/boot-ramdisk/lib/modules/ \;
 find -name *.ko -exec cp -av {} $WORKDIR/recovery-ramdisk/lib/modules/ \;
@@ -154,8 +163,8 @@ $TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/recovery.img -f $WORKDIR
 
 echo 'Making Odin flashable tarballs...'
 cd $WORKDIR/
-tar -cvf $BOOTPACK.tar boot.img
-tar -cvf $RECOVERYPACK.tar recovery.img
+$TCHAINDIR/$SUBARCH/busybox/busybox tar -cvf $BOOTPACK.tar boot.img
+$TCHAINDIR/$SUBARCH/busybox/busybox tar -cvf $RECOVERYPACK.tar recovery.img
 
 # echo 'Making CWM/TWRP flashable zips...'
 # cp -a $WORKDIR/output/*.img $WORKDIR/temp/recovery-flashable/
