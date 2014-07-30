@@ -145,8 +145,8 @@ if [ $? == 0 ]; then
 fi
 cat $SOURCEDIR/arch/arm/configs/$BASECONFIG \
     $SOURCEDIR/arch/arm/configs/$MODCONFIG > $SOURCEDIR/arch/arm/configs/temp_defconfig
-make temp_defconfig
-make -j2 1>$WORKDIR/normal.output.txt 2>$WORKDIR/critial.output.txt
+make temp_defconfig 1>$WORKDIR/normal.output.txt 2>$WORKDIR/critial.output.txt
+make -j3 1>>$WORKDIR/normal.output.txt 2>>$WORKDIR/critial.output.txt
 find -name zImage -exec cp -av {} $WORKDIR/ \;
 find -name *.ko -exec cp -av {} $WORKDIR/boot-ramdisk/lib/modules/ \;
 find -name *.ko -exec cp -av {} $WORKDIR/recovery-ramdisk/lib/modules/ \;
