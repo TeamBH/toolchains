@@ -95,8 +95,7 @@ if [ ! -z $NEWVER ]; then
   VERSION=$NEWVER
 fi
 export LOCALVERSION=`echo -$MODEL-$VERSION | sed -e s/ja3gduos_chn_ctc/i959/g -e s/ja3gduos_chn_cu/i9502/g -e s/ja3g_chn_open/i9500/g`
-BOOTPACK='boot'$LOCALVERSION
-RECOVERYPACK='recovery'$LOCALVERSION
+KERNELPACK='kernel'$LOCALVERSION
 
 echo 'Setting workspace...'
 rm -rf $WORKDIR
@@ -109,8 +108,6 @@ mv zImage zImage.stock
 mv initrd.img initrd.stock.img
 mkdir $WORKDIR/boot-ramdisk
 $TCHAINDIR/$SUBARCH/busybox/busybox zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk; cpio -i )
-# cp -a $INITRDDIR/addon/* $WORKDIR/boot-ramdisk
-# cat $WORKDIR/boot-ramdisk/res/init_patch >> $WORKDIR/boot-ramdisk/init.rc
 if [ -d $WORKDIR/boot-ramdisk/lib/modules/ ]; then
   find $WORKDIR/boot-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
 else
@@ -124,7 +121,30 @@ if [ -d $WORKDIR/recovery-ramdisk/lib/modules/ ]; then
 else
   mkdir -p $WORKDIR/recovery-ramdisk/lib/modules/
 fi
-clear
+
+echo 'Setting post-init services'
+echo '1. init.d support: run shell scripts in /system/etc/init.d after kernel inited.'
+echo '2. STweaks support: Make the kernel support STweaks app.'
+echo '3. Entropy generator: Reduce lag.'
+read -p 'Please input the number(s) of the service(s) you want, eg. 1 or 12 or 23 or 123 or just 3, suggest at least 1)>' SERVNUM
+SERVLIST='none'
+if echo $SERVNUM | grep -q 1; then
+  cp -a $INITRDDIR/addons/initd/sbin/* $WORKDIR/boot-ramdisk/sbin/
+  cat $INITRDDIR/addons/initd/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  SERVLIST=`echo $SERVLIST | sed -e s/none//g`' init.d'
+fi
+if echo $SERVNUM | grep -q 2; then
+  cp -a $INITRDDIR/addons/stweaks/sbin/* $WORKDIR/boot-ramdisk/sbin/
+  cp -a $INITRDDIR/addons/stweaks/res $WORKDIR/boot-ramdisk/
+  cat $INITRDDIR/addons/stweaks/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  SERVLIST=`echo $SERVLIST | sed -e s/none//g`' STweaks'
+fi
+if echo $SERVNUM | grep -q 3; then
+  cp -a $INITRDDIR/addons/rngd/sbin/* $WORKDIR/boot-ramdisk/sbin/
+  cat $INITRDDIR/addons/rngd/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  SERVLIST=`echo $SERVLIST | sed -e s/none//g`' RNGD'
+fi
+
 echo 'About to compile the kernel...'
 echo 'Model: '`echo $MODEL | sed -e s/ja3gduos_chn_cu/'Galaxy S4 Duos WCDMA-3G: GT-I9502'/g \
                                      -e s/ja3gduos_chn_ctc/'Galaxy S4 Duos CDMA2000: SCH-I959'/g \
@@ -133,6 +153,7 @@ echo 'Version: 3.4.5-MaxFour'$LOCALVERSION
 echo 'Android SDK: '`echo $SDK | sed -e 's/sdk18/TouchWiz 4.3/g' -e 's/sdk19/TouchWiz 4.4.2/g' \
                                      -e 's/aosp18/AndroidOpensource 4.3/g' -e 's/aosp19/AndroidOpensource 4.4.2/g'`
 echo 'SYSROOT: '$SYSROOT
+echo 'Services: '$SERVLIST
 echo 'Files: '$WORKDIR'/*.tar, *.zip, *.patch, normal.output.txt, critial.output.txt'
 read -p 'Input anything with ENTER to continue.>' INPUT
 
@@ -158,18 +179,22 @@ chmod -R g-w $WORKDIR/recovery-ramdisk/*
 ( cd $WORKDIR/recovery-ramdisk; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/recovery-ramdisk.cpio.lzma
 
 echo 'Making images...'
-$TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/boot.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/boot-ramdisk.cpio.lzma
-$TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/recovery.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-ramdisk.cpio.lzma
+rm -rf $WORKDIR/output
+mkdir $WORKDIR/output
+$TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/output/boot.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/boot-ramdisk.cpio.lzma
+$TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/output/recovery.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-ramdisk.cpio.lzma
 
 echo 'Making Odin flashable tarballs...'
-cd $WORKDIR/
-$TCHAINDIR/$SUBARCH/busybox/busybox tar -cvf $BOOTPACK.tar boot.img
-$TCHAINDIR/$SUBARCH/busybox/busybox tar -cvf $RECOVERYPACK.tar recovery.img
+cd $WORKDIR/output/
+$TCHAINDIR/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/output/$KERNELPACK.tar boot.img recovery.img
+md5sum $WORKDIR/output/$KERNELPACK.tar >> $WORKDIR/output/$KERNELPACK.tar
+mv $WORKDIR/output/$KERNELPACK.tar $WORKDIR/output/$KERNELPACK.tar.md5
 
-# echo 'Making CWM/TWRP flashable zips...'
-# cp -a $WORKDIR/output/*.img $WORKDIR/temp/recovery-flashable/
-# cd $WORKDIR/temp/recovery-flashable/
-# zip -9r $WORKDIR/output/kernel-$MODEL-$VERSION.zip *
+echo 'Making CWM/TWRP flashable zips...'
+cp -a $INITRDDIR/recovery-flashable $WORKDIR
+cp -a $WORKDIR/output/boot.img $WORKDIR/output/recovery.img $WORKDIR/recovery-flashable/
+cd $WORKDIR/recovery-flashable/
+zip -9r $WORKDIR/output/$KERNELPACK.zip *
 
 echo 'Cleaning Source...'
 cd $SOURCEDIR
