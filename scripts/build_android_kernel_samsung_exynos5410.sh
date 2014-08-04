@@ -202,7 +202,7 @@ $TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/output/recovery.img -f $
 echo 'Making Odin flashable tarballs...'
 cd $WORKDIR/output/
 $TCHAINDIR/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/output/$KERNELPACK.tar boot.img recovery.img
-md5sum $WORKDIR/output/$KERNELPACK.tar >> $WORKDIR/output/$KERNELPACK.tar
+md5sum -t $WORKDIR/output/$KERNELPACK.tar >> $WORKDIR/output/$KERNELPACK.tar
 mv $WORKDIR/output/$KERNELPACK.tar $WORKDIR/output/$KERNELPACK.tar.md5
 
 echo 'Making CWM/TWRP flashable zips...'
