@@ -126,7 +126,10 @@ echo 'Setting post-init services'
 echo '1. init.d support: run shell scripts in /system/etc/init.d after kernel inited.'
 echo '2. STweaks support: Make the kernel support STweaks app.'
 echo '3. Entropy generator: Reduce lag.'
-read -p 'Please input the number(s) of the service(s) you want, eg. 1 or 12 or 23 or 123 or just 3, suggest at least 1)>' SERVNUM
+echo '4. Wolfson Sound Control: For i 9500 only, currently not working.'
+echo '5. Tweaks: Some tweaks, not suggested.'
+
+read -p 'Please input the number(s) of the service(s) you want, eg. 4,23,12345, suggest at least 1)>' SERVNUM
 SERVLIST='none'
 if echo $SERVNUM | grep -q 1; then
   cp -a $INITRDDIR/addons/initd/sbin/* $WORKDIR/boot-ramdisk/sbin/
@@ -143,6 +146,18 @@ if echo $SERVNUM | grep -q 3; then
   cp -a $INITRDDIR/addons/rngd/sbin/* $WORKDIR/boot-ramdisk/sbin/
   cat $INITRDDIR/addons/rngd/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
   SERVLIST=`echo $SERVLIST | sed -e s/none//g`' RNGD'
+fi
+
+if echo $SERVNUM | grep -q 4; then
+  cp -a $INITRDDIR/addons/wolfsoncontrol/sbin/* $WORKDIR/boot-ramdisk/sbin/
+  cat $INITRDDIR/addons/wolfsoncontrol/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  SERVLIST=`echo $SERVLIST | sed -e s/none//g`' Wolfsoncontrol'
+fi
+
+if echo $SERVNUM | grep -q 5; then
+  cp -a $INITRDDIR/addons/tweaks/sbin/* $WORKDIR/boot-ramdisk/sbin/
+  cat $INITRDDIR/addons/tweaks/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  SERVLIST=`echo $SERVLIST | sed -e s/none//g`' Tweaks'
 fi
 
 echo 'About to compile the kernel...'
