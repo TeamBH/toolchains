@@ -63,16 +63,17 @@ export BOOTIMG=$INITRDDIR/$MODEL/boot.$SDK.img
 export RECOVERYCPIO=$INITRDDIR/$MODEL/recovery.cpio.lzma
 
 echo 'Setting Toolchain...'
+SYSTEM=`uname`
 SUBARCH=`uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ -e s/arm.*/arm/ -e s/sa110/arm/ \
 				  -e s/s390x/s390/ -e s/parisc64/parisc/ -e s/ppc.*/powerpc/ -e s/mips.*/mips/ \
 				  -e s/sh[234].*/sh/`
 INDEX=1
 HEAD=''
-for i in `ls $TCHAINDIR/$SUBARCH`; do
+for i in `ls $TCHAINDIR/$SYSTEM/$SUBARCH`; do
   if `echo $i | grep -q $ARCH`; then
     HEAD=$HEAD''$INDEX
     echo $INDEX' - '$i
-    eval TCHAIN$INDEX=$TCHAINDIR/$SUBARCH/$i/bin/${i%eabi*}eabi-
+    eval TCHAIN$INDEX=$TCHAINDIR/$SYSTEM/$SUBARCH/$i/bin/${i%eabi*}eabi-
     INDEX=`expr $INDEX + 1`
   fi
 done
@@ -84,7 +85,7 @@ fi
 CHOICE=TCHAIN$NUM
 eval export CROSS_COMPILE=\$$CHOICE
 API=`echo $SDK | sed 's/aosp/sdk/g'`
-export SYSROOT=$TCHAINDIR/$SUBARCH/sysroot/$API/
+export SYSROOT=$TCHAINDIR/$SYSTEM/$SUBARCH/sysroot/$API/
 
 echo 'Setting version'
 VERSION=v15
@@ -102,12 +103,12 @@ rm -rf $WORKDIR
 mkdir $WORKDIR
 cd $WORKDIR
 cp -a $BOOTIMG $WORKDIR/boot.stock.img
-$TCHAINDIR/$SUBARCH/abootimg/abootimg -x boot.stock.img
+$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg -x boot.stock.img
 sed -i '/bootsize/d' $WORKDIR/bootimg.cfg
 mv zImage zImage.stock
 mv initrd.img initrd.stock.img
 mkdir $WORKDIR/boot-ramdisk
-$TCHAINDIR/$SUBARCH/busybox/busybox zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk; cpio -i )
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk; cpio -i )
 if [ -d $WORKDIR/boot-ramdisk/lib/modules/ ]; then
   find $WORKDIR/boot-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
 else
@@ -115,7 +116,7 @@ else
 fi
 cp -a $RECOVERYCPIO $WORKDIR/
 mkdir $WORKDIR/recovery-ramdisk
-$TCHAINDIR/$SUBARCH/busybox/busybox lzcat $WORKDIR/recovery.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk; cpio -i )
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox lzcat $WORKDIR/recovery.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk; cpio -i )
 if [ -d $WORKDIR/recovery-ramdisk/lib/modules/ ]; then
   find $WORKDIR/recovery-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
 else
@@ -169,7 +170,7 @@ echo 'Android SDK: '`echo $SDK | sed -e 's/sdk18/TouchWiz 4.3/g' -e 's/sdk19/Tou
                                      -e 's/aosp18/AndroidOpensource 4.3/g' -e 's/aosp19/AndroidOpensource 4.4.2/g'`
 echo 'SYSROOT: '$SYSROOT
 echo 'Services: '$SERVLIST
-echo 'Files: '$WORKDIR'/*.tar, *.zip, *.patch, normal.output.txt, critial.output.txt'
+echo 'Result: '$WORKDIR'/'$KERNELPACK
 read -p 'Input anything with ENTER to continue.>' INPUT
 
 echo 'Making kernel and modules...'
@@ -194,22 +195,22 @@ chmod -R g-w $WORKDIR/recovery-ramdisk/*
 ( cd $WORKDIR/recovery-ramdisk; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/recovery-ramdisk.cpio.lzma
 
 echo 'Making images...'
-rm -rf $WORKDIR/output
-mkdir $WORKDIR/output
-$TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/output/boot.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/boot-ramdisk.cpio.lzma
-$TCHAINDIR/$SUBARCH/abootimg/abootimg --create $WORKDIR/output/recovery.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-ramdisk.cpio.lzma
+rm -rf $WORKDIR/$KERNELPACK
+mkdir $WORKDIR/$KERNELPACK
+$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg --create $WORKDIR/$KERNELPACK/boot.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/boot-ramdisk.cpio.lzma
+$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg --create $WORKDIR/$KERNELPACK/recovery.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-ramdisk.cpio.lzma
 
 echo 'Making Odin flashable tarballs...'
-cd $WORKDIR/output/
-$TCHAINDIR/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/output/$KERNELPACK.tar boot.img recovery.img
-md5sum -t $WORKDIR/output/$KERNELPACK.tar >> $WORKDIR/output/$KERNELPACK.tar
-mv $WORKDIR/output/$KERNELPACK.tar $WORKDIR/output/$KERNELPACK.tar.md5
+cd $WORKDIR/$KERNELPACK/
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/$KERNELPACK/$KERNELPACK.tar boot.img recovery.img
+md5sum -t $WORKDIR/$KERNELPACK/$KERNELPACK.tar >> $WORKDIR/$KERNELPACK/$KERNELPACK.tar
+mv $WORKDIR/$KERNELPACK/$KERNELPACK.tar $WORKDIR/$KERNELPACK/$KERNELPACK.tar.md5
 
 echo 'Making CWM/TWRP flashable zips...'
 cp -a $INITRDDIR/recovery-flashable $WORKDIR
-cp -a $WORKDIR/output/boot.img $WORKDIR/output/recovery.img $WORKDIR/recovery-flashable/
+cp -a $WORKDIR/$KERNELPACK/boot.img $WORKDIR/$KERNELPACK/recovery.img $WORKDIR/recovery-flashable/
 cd $WORKDIR/recovery-flashable/
-zip -9r $WORKDIR/output/$KERNELPACK.zip *
+zip -9r $WORKDIR/$KERNELPACK/$KERNELPACK.zip *
 
 echo 'Cleaning Source...'
 cd $SOURCEDIR
