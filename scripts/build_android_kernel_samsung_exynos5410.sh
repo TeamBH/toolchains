@@ -1,8 +1,9 @@
 echo 'Setting parameters...'
-export SOURCEDIR=/root/android/android_kernel_samsung_exynos5410
-export INITRDDIR=/root/android/initramfs_samsung_galaxy_s4
-export TCHAINDIR=/root/android/toolchains
-export WORKDIR=/root/android/workspace
+export BASEDIR=/root/android
+export SOURCEDIR=$BASEDIR/android_kernel_samsung_exynos5410
+export INITRDDIR=$BASEDIR/initramfs_samsung_galaxy_s4
+export TCHAINDIR=$BASEDIR/toolchains
+export WORKDIR=$BASEDIR/workspace
 export ARCH=arm
 export USE_SEC_FIPS_MODE=true
 export SEC_BUILD_OPTION_SELINUX_ENFORCE=false
