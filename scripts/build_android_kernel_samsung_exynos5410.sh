@@ -1,5 +1,5 @@
 echo 'Setting parameters...'
-export BASEDIR=/root/android
+export BASEDIR=`pwd`
 export SOURCEDIR=$BASEDIR/android_kernel_samsung_exynos5410
 export INITRDDIR=$BASEDIR/initramfs_samsung_galaxy_s4
 export TCHAINDIR=$BASEDIR/toolchains
@@ -61,7 +61,8 @@ fi
 CHOICE=SDK$NUM
 eval export SDK=\$$CHOICE
 export BOOTIMG=$INITRDDIR/$MODEL/boot.$SDK.img
-export RECOVERYCPIO=$INITRDDIR/$MODEL/recovery.cpio.lzma
+export RECOVERYCPIOCN=$INITRDDIR/$MODEL/recovery-chinese.cpio.lzma
+export RECOVERYCPIOEN=$INITRDDIR/$MODEL/recovery-english.cpio.lzma
 
 echo 'Setting Toolchain...'
 SYSTEM=`uname`
@@ -89,7 +90,7 @@ API=`echo $SDK | sed 's/aosp/sdk/g'`
 export SYSROOT=$TCHAINDIR/$SYSTEM/$SUBARCH/sysroot/$API/
 
 echo 'Setting version'
-VERSION=v15
+VERSION=v16b3
 echo 'Last version used is '$VERSION
 read -p 'Please Input a new version, input nothing to use the old one...>' NEWVER
 if [ ! -z $NEWVER ]; then
@@ -108,21 +109,33 @@ $TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg -x boot.stock.img
 sed -i '/bootsize/d' $WORKDIR/bootimg.cfg
 mv zImage zImage.stock
 mv initrd.img initrd.stock.img
-mkdir $WORKDIR/boot-ramdisk
-$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk; cpio -i )
-if [ -d $WORKDIR/boot-ramdisk/lib/modules/ ]; then
-  find $WORKDIR/boot-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
+mkdir $WORKDIR/boot-ramdisk-lite
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk-lite; cpio -i )
+mkdir $WORKDIR/boot-ramdisk-full
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox zcat $WORKDIR/initrd.stock.img | ( cd $WORKDIR/boot-ramdisk-full; cpio -i )
+if [ -d $WORKDIR/boot-ramdisk-full/lib/modules/ ]; then
+  find $WORKDIR/boot-ramdisk-full/lib/modules/ -name *.ko -exec rm -f {} \;
 else
-  mkdir -p $WORKDIR/boot-ramdisk/lib/modules/
+  mkdir -p $WORKDIR/boot-ramdisk-full/lib/modules/
 fi
-cp -a $RECOVERYCPIO $WORKDIR/
-mkdir $WORKDIR/recovery-ramdisk
-$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox lzcat $WORKDIR/recovery.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk; cpio -i )
-if [ -d $WORKDIR/recovery-ramdisk/lib/modules/ ]; then
-  find $WORKDIR/recovery-ramdisk/lib/modules/ -name *.ko -exec rm -f {} \;
+cp -a $RECOVERYCPIOCN $WORKDIR/
+mkdir $WORKDIR/recovery-ramdisk-chinese
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox lzcat $WORKDIR/recovery-chinese.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk-chinese; cpio -i )
+if [ -d $WORKDIR/recovery-ramdisk-chinese/lib/modules/ ]; then
+  find $WORKDIR/recovery-ramdisk-chinese/lib/modules/ -name *.ko -exec rm -f {} \;
 else
-  mkdir -p $WORKDIR/recovery-ramdisk/lib/modules/
+  mkdir -p $WORKDIR/recovery-ramdisk-chinese/lib/modules/
 fi
+cp -a $RECOVERYCPIOEN $WORKDIR/
+mkdir $WORKDIR/recovery-ramdisk-english
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox lzcat $WORKDIR/recovery-english.cpio.lzma | ( cd $WORKDIR/recovery-ramdisk-english; cpio -i )
+if [ -d $WORKDIR/recovery-ramdisk-english/lib/modules/ ]; then
+  find $WORKDIR/recovery-ramdisk-english/lib/modules/ -name *.ko -exec rm -f {} \;
+else
+  mkdir -p $WORKDIR/recovery-ramdisk-english/lib/modules/
+fi
+
+
 
 echo 'Setting post-init services'
 echo '1. init.d support: run shell scripts in /system/etc/init.d after kernel inited.'
@@ -134,31 +147,40 @@ echo '5. Tweaks: Some tweaks, not suggested.'
 read -p 'Please input the number(s) of the service(s) you want, eg. 4,23,12345, suggest at least 1)>' SERVNUM
 SERVLIST='none'
 if echo $SERVNUM | grep -q 1; then
-  cp -a $INITRDDIR/addons/initd/sbin/* $WORKDIR/boot-ramdisk/sbin/
-  cat $INITRDDIR/addons/initd/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  cp -a $INITRDDIR/addons/initd/sbin/* $WORKDIR/boot-ramdisk-lite/sbin/
+  cat $INITRDDIR/addons/initd/init.rc.catrd >> $WORKDIR/boot-ramdisk-lite/init.rc
+  cp -a $INITRDDIR/addons/initd/sbin/* $WORKDIR/boot-ramdisk-full/sbin/
+  cat $INITRDDIR/addons/initd/init.rc.catrd >> $WORKDIR/boot-ramdisk-full/init.rc
   SERVLIST=`echo $SERVLIST | sed -e s/none//g`' init.d'
 fi
 if echo $SERVNUM | grep -q 2; then
-  cp -a $INITRDDIR/addons/stweaks/sbin/* $WORKDIR/boot-ramdisk/sbin/
-  cp -a $INITRDDIR/addons/stweaks/res $WORKDIR/boot-ramdisk/
-  cat $INITRDDIR/addons/stweaks/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  cp -a $INITRDDIR/addons/stweaks/sbin/* $WORKDIR/boot-ramdisk-lite/sbin/
+  cp -a $INITRDDIR/addons/stweaks/res $WORKDIR/boot-ramdisk-lite/
+  cat $INITRDDIR/addons/stweaks/init.rc.catrd >> $WORKDIR/boot-ramdisk-lite/init.rc
+  cp -a $INITRDDIR/addons/stweaks/sbin/* $WORKDIR/boot-ramdisk-full/sbin/
+  cp -a $INITRDDIR/addons/stweaks/res $WORKDIR/boot-ramdisk-full/
+  cat $INITRDDIR/addons/stweaks/init.rc.catrd >> $WORKDIR/boot-ramdisk-full/init.rc
   SERVLIST=`echo $SERVLIST | sed -e s/none//g`' STweaks'
 fi
 if echo $SERVNUM | grep -q 3; then
-  cp -a $INITRDDIR/addons/rngd/sbin/* $WORKDIR/boot-ramdisk/sbin/
-  cat $INITRDDIR/addons/rngd/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  cp -a $INITRDDIR/addons/rngd/sbin/* $WORKDIR/boot-ramdisk-lite/sbin/
+  cat $INITRDDIR/addons/rngd/init.rc.catrd >> $WORKDIR/boot-ramdisk-lite/init.rc
+  cp -a $INITRDDIR/addons/rngd/sbin/* $WORKDIR/boot-ramdisk-full/sbin/
+  cat $INITRDDIR/addons/rngd/init.rc.catrd >> $WORKDIR/boot-ramdisk-full/init.rc
   SERVLIST=`echo $SERVLIST | sed -e s/none//g`' RNGD'
 fi
-
 if echo $SERVNUM | grep -q 4; then
-  cp -a $INITRDDIR/addons/wolfsoncontrol/sbin/* $WORKDIR/boot-ramdisk/sbin/
-  cat $INITRDDIR/addons/wolfsoncontrol/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  cp -a $INITRDDIR/addons/wolfsoncontrol/sbin/* $WORKDIR/boot-ramdisk-lite/sbin/
+  cat $INITRDDIR/addons/wolfsoncontrol/init.rc.catrd >> $WORKDIR/boot-ramdisk-lite/init.rc
+  cp -a $INITRDDIR/addons/wolfsoncontrol/sbin/* $WORKDIR/boot-ramdisk-full/sbin/
+  cat $INITRDDIR/addons/wolfsoncontrol/init.rc.catrd >> $WORKDIR/boot-ramdisk-full/init.rc
   SERVLIST=`echo $SERVLIST | sed -e s/none//g`' Wolfsoncontrol'
 fi
-
 if echo $SERVNUM | grep -q 5; then
-  cp -a $INITRDDIR/addons/tweaks/sbin/* $WORKDIR/boot-ramdisk/sbin/
-  cat $INITRDDIR/addons/tweaks/init.rc.catrd >> $WORKDIR/boot-ramdisk/init.rc
+  cp -a $INITRDDIR/addons/tweaks/sbin/* $WORKDIR/boot-ramdisk-lite/sbin/
+  cat $INITRDDIR/addons/tweaks/init.rc.catrd >> $WORKDIR/boot-ramdisk-lite/init.rc
+  cp -a $INITRDDIR/addons/tweaks/sbin/* $WORKDIR/boot-ramdisk-full/sbin/
+  cat $INITRDDIR/addons/tweaks/init.rc.catrd >> $WORKDIR/boot-ramdisk-full/init.rc
   SERVLIST=`echo $SERVLIST | sed -e s/none//g`' Tweaks'
 fi
 
@@ -186,32 +208,85 @@ cat $SOURCEDIR/arch/arm/configs/$BASECONFIG \
 make temp_defconfig 1>$WORKDIR/normal.output.txt 2>$WORKDIR/critial.output.txt
 make -j3 1>>$WORKDIR/normal.output.txt 2>>$WORKDIR/critial.output.txt
 find -name zImage -exec cp -av {} $WORKDIR/ \;
-find -name *.ko -exec cp -av {} $WORKDIR/boot-ramdisk/lib/modules/ \;
-find -name *.ko -exec cp -av {} $WORKDIR/recovery-ramdisk/lib/modules/ \;
+find -name *.ko -exec cp -av {} $WORKDIR/boot-ramdisk-full/lib/modules/ \;
+find -name *.ko -exec cp -av {} $WORKDIR/recovery-ramdisk-chinese/lib/modules/ \;
+find -name *.ko -exec cp -av {} $WORKDIR/recovery-ramdisk-english/lib/modules/ \;
 
 echo 'Making ramdisks...'
-chmod -R g-w $WORKDIR/boot-ramdisk/*
-( cd $WORKDIR/boot-ramdisk; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/boot-ramdisk.cpio.lzma
-chmod -R g-w $WORKDIR/recovery-ramdisk/*
-( cd $WORKDIR/recovery-ramdisk; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/recovery-ramdisk.cpio.lzma
+chmod -R g-w $WORKDIR/boot-ramdisk-lite/*
+( cd $WORKDIR/boot-ramdisk-lite; find | sort | cpio --quiet -o -H newc ) | gzip > $WORKDIR/boot-ramdisk-lite.cpio.gzip
+chmod -R g-w $WORKDIR/boot-ramdisk-full/*
+( cd $WORKDIR/boot-ramdisk-full; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/boot-ramdisk-full.cpio.lzma
+chmod -R g-w $WORKDIR/recovery-ramdisk-chinese/*
+( cd $WORKDIR/recovery-ramdisk-chinese; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/recovery-ramdisk-chinese.cpio.lzma
+chmod -R g-w $WORKDIR/recovery-ramdisk-english/*
+( cd $WORKDIR/recovery-ramdisk-english; find | sort | cpio --quiet -o -H newc ) | lzma > $WORKDIR/recovery-ramdisk-english.cpio.lzma
 
 echo 'Making images...'
 rm -rf $WORKDIR/$KERNELPACK
 mkdir $WORKDIR/$KERNELPACK
-$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg --create $WORKDIR/$KERNELPACK/boot.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/boot-ramdisk.cpio.lzma
-$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg --create $WORKDIR/$KERNELPACK/recovery.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-ramdisk.cpio.lzma
+$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg --create $WORKDIR/$KERNELPACK/boot-lite.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage.stock -r $WORKDIR/boot-ramdisk-lite.cpio.gzip
+$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg --create $WORKDIR/$KERNELPACK/boot-full.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/boot-ramdisk-full.cpio.lzma
+$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg --create $WORKDIR/$KERNELPACK/recovery-chinese.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-ramdisk-chinese.cpio.lzma
+$TCHAINDIR/$SYSTEM/$SUBARCH/abootimg/abootimg --create $WORKDIR/$KERNELPACK/recovery-english.img -f $WORKDIR/bootimg.cfg -k $WORKDIR/zImage -r $WORKDIR/recovery-ramdisk-english.cpio.lzma
 
 echo 'Making Odin flashable tarballs...'
 cd $WORKDIR/$KERNELPACK/
-$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/$KERNELPACK/$KERNELPACK.tar boot.img recovery.img
-md5sum -t $WORKDIR/$KERNELPACK/$KERNELPACK.tar >> $WORKDIR/$KERNELPACK/$KERNELPACK.tar
-mv $WORKDIR/$KERNELPACK/$KERNELPACK.tar $WORKDIR/$KERNELPACK/$KERNELPACK.tar.md5
+cp -a $WORKDIR/$KERNELPACK/boot-lite.img $WORKDIR/$KERNELPACK/boot.img
+cp -a $WORKDIR/$KERNELPACK/recovery-chinese.img $WORKDIR/$KERNELPACK/recovery.img
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/$KERNELPACK/$KERNELPACK-lite-cn.tar boot.img recovery.img
+md5sum -t $WORKDIR/$KERNELPACK/$KERNELPACK-lite-cn.tar >> $WORKDIR/$KERNELPACK/$KERNELPACK-lite-cn.tar
+mv $WORKDIR/$KERNELPACK/$KERNELPACK-lite-cn.tar $WORKDIR/$KERNELPACK/$KERNELPACK-lite-cn.tar.md5
+rm $WORKDIR/$KERNELPACK/boot.img
+rm $WORKDIR/$KERNELPACK/recovery.img
+cp -a $WORKDIR/$KERNELPACK/boot-full.img $WORKDIR/$KERNELPACK/boot.img
+cp -a $WORKDIR/$KERNELPACK/recovery-chinese.img $WORKDIR/$KERNELPACK/recovery.img
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/$KERNELPACK/$KERNELPACK-full-cn.tar boot.img recovery.img
+md5sum -t $WORKDIR/$KERNELPACK/$KERNELPACK-full-cn.tar >> $WORKDIR/$KERNELPACK/$KERNELPACK-full-cn.tar
+mv $WORKDIR/$KERNELPACK/$KERNELPACK-full-cn.tar $WORKDIR/$KERNELPACK/$KERNELPACK-full-cn.tar.md5
+rm $WORKDIR/$KERNELPACK/boot.img
+rm $WORKDIR/$KERNELPACK/recovery.img
+cp -a $WORKDIR/$KERNELPACK/boot-lite.img $WORKDIR/$KERNELPACK/boot.img
+cp -a $WORKDIR/$KERNELPACK/recovery-english.img $WORKDIR/$KERNELPACK/recovery.img
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/$KERNELPACK/$KERNELPACK-lite-en.tar boot.img recovery.img
+md5sum -t $WORKDIR/$KERNELPACK/$KERNELPACK-lite-en.tar >> $WORKDIR/$KERNELPACK/$KERNELPACK-lite-en.tar
+mv $WORKDIR/$KERNELPACK/$KERNELPACK-lite-en.tar $WORKDIR/$KERNELPACK/$KERNELPACK-lite-en.tar.md5
+rm $WORKDIR/$KERNELPACK/boot.img
+rm $WORKDIR/$KERNELPACK/recovery.img
+cp -a $WORKDIR/$KERNELPACK/boot-full.img $WORKDIR/$KERNELPACK/boot.img
+cp -a $WORKDIR/$KERNELPACK/recovery-english.img $WORKDIR/$KERNELPACK/recovery.img
+$TCHAINDIR/$SYSTEM/$SUBARCH/busybox/busybox tar -cvf $WORKDIR/$KERNELPACK/$KERNELPACK-full-en.tar boot.img recovery.img
+md5sum -t $WORKDIR/$KERNELPACK/$KERNELPACK-full-en.tar >> $WORKDIR/$KERNELPACK/$KERNELPACK-full-en.tar
+mv $WORKDIR/$KERNELPACK/$KERNELPACK-full-en.tar $WORKDIR/$KERNELPACK/$KERNELPACK-full-en.tar.md5
+rm $WORKDIR/$KERNELPACK/boot.img
+rm $WORKDIR/$KERNELPACK/recovery.img
 
 echo 'Making CWM/TWRP flashable zips...'
 cp -a $INITRDDIR/recovery-flashable $WORKDIR
-cp -a $WORKDIR/$KERNELPACK/boot.img $WORKDIR/$KERNELPACK/recovery.img $WORKDIR/recovery-flashable/
+cp -a $WORKDIR/$KERNELPACK/boot-lite.img $WORKDIR/recovery-flashable/boot.img
+cp -a $WORKDIR/$KERNELPACK/recovery-chinese.img $WORKDIR/recovery-flashable/recovery.img
 cd $WORKDIR/recovery-flashable/
-zip -9r $WORKDIR/$KERNELPACK/$KERNELPACK.zip *
+zip -9r $WORKDIR/$KERNELPACK/$KERNELPACK-lite-cn.zip *
+rm $WORKDIR/recovery-flashable/boot.img
+rm $WORKDIR/recovery-flashable/recovery.img
+cp -a $WORKDIR/$KERNELPACK/boot-full.img $WORKDIR/recovery-flashable/boot.img
+cp -a $WORKDIR/$KERNELPACK/recovery-chinese.img $WORKDIR/recovery-flashable/recovery.img
+cd $WORKDIR/recovery-flashable/
+zip -9r $WORKDIR/$KERNELPACK/$KERNELPACK-full-cn.zip *
+rm $WORKDIR/recovery-flashable/boot.img
+rm $WORKDIR/recovery-flashable/recovery.img
+cp -a $WORKDIR/$KERNELPACK/boot-lite.img $WORKDIR/recovery-flashable/boot.img
+cp -a $WORKDIR/$KERNELPACK/recovery-english.img $WORKDIR/recovery-flashable/recovery.img
+cd $WORKDIR/recovery-flashable/
+zip -9r $WORKDIR/$KERNELPACK/$KERNELPACK-lite-en.zip *
+rm $WORKDIR/recovery-flashable/boot.img
+rm $WORKDIR/recovery-flashable/recovery.img
+cp -a $WORKDIR/$KERNELPACK/boot-full.img $WORKDIR/recovery-flashable/boot.img
+cp -a $WORKDIR/$KERNELPACK/recovery-english.img $WORKDIR/recovery-flashable/recovery.img
+cd $WORKDIR/recovery-flashable/
+zip -9r $WORKDIR/$KERNELPACK/$KERNELPACK-full-en.zip *
+rm $WORKDIR/recovery-flashable/boot.img
+rm $WORKDIR/recovery-flashable/recovery.img
 
 echo 'Cleaning Source...'
 cd $SOURCEDIR
